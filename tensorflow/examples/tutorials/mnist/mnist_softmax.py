@@ -35,37 +35,45 @@ FLAGS = None
 def main(_):
   mnist = input_data.read_data_sets(FLAGS.data_dir, one_hot=True)
 
-  # Create the model
+  # tensorflow describes computations as nodes and edges in a graph
+  # the nodes are computations and the edges are the inputs/outputs.
+  # edges are usually/always? vectors.
+  #
+  # no computation happens until the session is run.
+  # all computation is optimized to be computed within the tensorflow framework,
+  # which can be executed on various hardware.
+
+  # input nodes, placeholders are always input data
   x = tf.placeholder(tf.float32, [None, 784])
-  W = tf.Variable(tf.zeros([784, 10]))
-  b = tf.Variable(tf.zeros([10]))
-  y = tf.matmul(x, W) + b
+  # node edges between input layer and "neuron" layer
+  # edges in the computation graph are called 'tensors'
+  W = tf.Variable(tf.zeros([784, 10])) 
+  # Variables are settable tensors within the tensorflow session
+  # Variables must be initialized before than can be used in a session
+  b = tf.Variable(tf.zeros([10])) # biases for neuron layer
+  y = tf.matmul(x, W) + b # output of network feed-forward computation
 
-  # Define loss and optimizer
-  y_ = tf.placeholder(tf.float32, [None, 10])
+  # actual classifications from data set
+  y_ = tf.placeholder(tf.float32, [None, 10]) 
 
-  # The raw formulation of cross-entropy,
-  #
-  #   tf.reduce_mean(-tf.reduce_sum(y_ * tf.log(tf.softmax(y)),
-  #                                 reduction_indices=[1]))
-  #
-  # can be numerically unstable.
-  #
-  # So here we use tf.nn.softmax_cross_entropy_with_logits on the raw
-  # outputs of 'y', and then average across the batch.
-  cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, y_))
-  train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
-
+  # average cost for output nodes (y) vs actual data (y_)
+  cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, y_)) 
+  # runs gradient descent with learning-rate 0.5 against cost function
+  train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy) 
+  
   sess = tf.InteractiveSession()
   # Train
   tf.initialize_all_variables().run()
-  for _ in range(1000):
-    batch_xs, batch_ys = mnist.train.next_batch(100)
+  for _ in range(1000): #train for 1000 epochs
+    batch_xs, batch_ys = mnist.train.next_batch(100) # use mini-batch size of 100
+    # feed_dict replaces placeholder values or any other tensors in your graph 
     sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
 
   # Test trained model
+  # argmax(y) grabs highest probability predicted class, argmax(y_) grabs actual class
   correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
-  accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+  # cast booleans from prediction to floats and average results for overall accuracy 
+  accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32)) 
   print(sess.run(accuracy, feed_dict={x: mnist.test.images,
                                       y_: mnist.test.labels}))
 
